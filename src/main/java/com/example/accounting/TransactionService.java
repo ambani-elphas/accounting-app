@@ -6,8 +6,11 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -41,6 +44,22 @@ public class TransactionService {
         return transaction;
     }
 
+    public synchronized Transaction updateById(UUID id, TransactionRequest request) {
+        int index = findIndexById(id);
+        Transaction existing = transactions.get(index);
+
+        Transaction updated = new Transaction(
+                existing.id(),
+                request.description().trim(),
+                normalizeCategory(request.category()),
+                request.amount(),
+                request.type(),
+                existing.createdAt());
+
+        transactions.set(index, updated);
+        return updated;
+    }
+
     public synchronized void deleteById(UUID id) {
         boolean removed = transactions.removeIf(transaction -> transaction.id().equals(id));
         if (!removed) {
@@ -60,6 +79,41 @@ public class TransactionService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         return new BalanceSummary(income, expenses, income.subtract(expenses));
+    }
+
+    public synchronized List<CategorySummary> getCategorySummaries() {
+        Map<String, List<Transaction>> byCategory = transactions.stream()
+                .collect(LinkedHashMap::new,
+                        (map, transaction) -> map.computeIfAbsent(transaction.category(), ignored -> new ArrayList<>()).add(transaction),
+                        LinkedHashMap::putAll);
+
+        return byCategory.entrySet().stream()
+                .map(entry -> toCategorySummary(entry.getKey(), entry.getValue()))
+                .sorted(Comparator.comparing(CategorySummary::category))
+                .toList();
+    }
+
+    private CategorySummary toCategorySummary(String category, List<Transaction> items) {
+        BigDecimal income = items.stream()
+                .filter(transaction -> transaction.type() == TransactionType.INCOME)
+                .map(Transaction::amount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal expenses = items.stream()
+                .filter(transaction -> transaction.type() == TransactionType.EXPENSE)
+                .map(Transaction::amount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return new CategorySummary(category, income, expenses, income.subtract(expenses));
+    }
+
+    private int findIndexById(UUID id) {
+        for (int i = 0; i < transactions.size(); i++) {
+            if (transactions.get(i).id().equals(id)) {
+                return i;
+            }
+        }
+        throw new TransactionNotFoundException(id);
     }
 
     private String normalizeCategory(String category) {

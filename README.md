@@ -1,6 +1,6 @@
 # accounting-app
 
-Java Spring Boot accounting app with transaction tracking, filtering, and running balance summary.
+Java Spring Boot accounting app with transaction tracking, filtering, updates, and running balance summaries.
 
 ## Prerequisites
 
@@ -33,6 +33,20 @@ Supported `type` values:
 - `INCOME`
 - `EXPENSE`
 
+### Update transaction
+
+```http
+PUT /api/transactions/{id}
+Content-Type: application/json
+
+{
+  "description": "Updated payment",
+  "category": "Consulting",
+  "amount": 1400.00,
+  "type": "INCOME"
+}
+```
+
 ### List transactions
 
 ```http
@@ -61,7 +75,7 @@ GET /api/transactions/{id}
 DELETE /api/transactions/{id}
 ```
 
-### Get summary
+### Get overall summary
 
 ```http
 GET /api/transactions/summary
@@ -75,6 +89,31 @@ Response shape:
   "expenses": 400.0,
   "balance": 800.0
 }
+```
+
+### Get summary by category
+
+```http
+GET /api/transactions/summary/by-category
+```
+
+Response shape:
+
+```json
+[
+  {
+    "category": "Operations",
+    "income": 0.0,
+    "expenses": 200.0,
+    "balance": -200.0
+  },
+  {
+    "category": "Revenue",
+    "income": 1200.0,
+    "expenses": 0.0,
+    "balance": 1200.0
+  }
+]
 ```
 
 ## Test

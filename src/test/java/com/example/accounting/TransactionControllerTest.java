@@ -15,6 +15,7 @@ import java.util.UUID;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -43,6 +44,40 @@ class TransactionControllerTest {
                 .andExpect(jsonPath("$.description").value("Office supplies"))
                 .andExpect(jsonPath("$.category").value("Operations"))
                 .andExpect(jsonPath("$.type").value("EXPENSE"));
+    }
+
+    @Test
+    void shouldUpdateTransaction() throws Exception {
+        MvcResult createResult = mockMvc.perform(post("/api/transactions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "description":"Invoice payment",
+                                  "category":"Revenue",
+                                  "amount":500,
+                                  "type":"INCOME"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        String id = JsonPath.read(createResult.getResponse().getContentAsString(), "$.id");
+
+        mockMvc.perform(put("/api/transactions/{id}", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "description":"Invoice payment - corrected",
+                                  "category":"Consulting",
+                                  "amount":650,
+                                  "type":"INCOME"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(id))
+                .andExpect(jsonPath("$.description").value("Invoice payment - corrected"))
+                .andExpect(jsonPath("$.category").value("Consulting"))
+                .andExpect(jsonPath("$.amount").value(650));
     }
 
     @Test
@@ -129,6 +164,50 @@ class TransactionControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].description").value("Cloud hosting"))
                 .andExpect(jsonPath("$[0].type").value("EXPENSE"));
+    }
+
+    @Test
+    void shouldReturnCategorySummaries() throws Exception {
+        mockMvc.perform(post("/api/transactions")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                          "description":"Client payment",
+                          "category":"Revenue",
+                          "amount":1000,
+                          "type":"INCOME"
+                        }
+                        """));
+
+        mockMvc.perform(post("/api/transactions")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                          "description":"Another payment",
+                          "category":"Revenue",
+                          "amount":250,
+                          "type":"INCOME"
+                        }
+                        """));
+
+        mockMvc.perform(post("/api/transactions")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {
+                          "description":"Hosting",
+                          "category":"Operations",
+                          "amount":200,
+                          "type":"EXPENSE"
+                        }
+                        """));
+
+        mockMvc.perform(get("/api/transactions/summary/by-category"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].category").value("Operations"))
+                .andExpect(jsonPath("$[0].expenses").value(200))
+                .andExpect(jsonPath("$[1].category").value("Revenue"))
+                .andExpect(jsonPath("$[1].income").value(1250))
+                .andExpect(jsonPath("$[1].balance").value(1250));
     }
 
     @Test
