@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 public class TransactionService {
@@ -23,7 +22,6 @@ public class TransactionService {
         return transactions.stream()
                 .filter(transaction -> type == null || transaction.type() == type)
                 .filter(transaction -> category == null || transaction.category().equalsIgnoreCase(category.trim()))
-                .sorted(Comparator.comparing(Transaction::createdAt).reversed())
                 .toList();
     }
 
@@ -81,22 +79,6 @@ public class TransactionService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         return new BalanceSummary(income, expenses, income.subtract(expenses));
-    }
-
-
-    public synchronized DashboardSummary getDashboardSummary() {
-        BalanceSummary summary = getBalanceSummary();
-        List<Transaction> recentTransactions = transactions.stream()
-                .sorted(Comparator.comparing(Transaction::createdAt).reversed())
-                .limit(5)
-                .collect(Collectors.toList());
-
-        return new DashboardSummary(
-                transactions.size(),
-                summary.income(),
-                summary.expenses(),
-                summary.balance(),
-                recentTransactions);
     }
 
     public synchronized List<CategorySummary> getCategorySummaries() {
