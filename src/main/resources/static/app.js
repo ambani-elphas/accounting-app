@@ -1,23 +1,18 @@
 const currency = (v) => `$${Number(v || 0).toFixed(2)}`;
 
 async function refreshDashboard() {
-  const [dashboardResponse, pageResponse] = await Promise.all([
-    fetch('/api/transactions/dashboard'),
-    fetch('/api/transactions?page=0&size=5'),
-  ]);
+  const response = await fetch('/api/transactions/dashboard');
+  const data = await response.json();
 
-  const dashboard = await dashboardResponse.json();
-  const page = await pageResponse.json();
-
-  document.getElementById('count').textContent = dashboard.transactionCount;
-  document.getElementById('income').textContent = currency(dashboard.income);
-  document.getElementById('expenses').textContent = currency(dashboard.expenses);
-  document.getElementById('balance').textContent = currency(dashboard.balance);
+  document.getElementById('count').textContent = data.transactionCount;
+  document.getElementById('income').textContent = currency(data.income);
+  document.getElementById('expenses').textContent = currency(data.expenses);
+  document.getElementById('balance').textContent = currency(data.balance);
 
   const body = document.getElementById('transactions-body');
   body.innerHTML = '';
 
-  for (const tx of page.items) {
+  for (const tx of data.recentTransactions) {
     const row = document.createElement('tr');
     row.innerHTML = `<td>${tx.description}</td><td>${tx.category}</td><td>${tx.type}</td><td>${currency(tx.amount)}</td>`;
     body.appendChild(row);

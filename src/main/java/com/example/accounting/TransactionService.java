@@ -7,59 +7,29 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.NavigableSet;
-import java.util.TreeSet;
 import java.util.UUID;
 
 @Service
 public class TransactionService {
 
-    private static final int MAX_PAGE_SIZE = 200;
-    private static final int DASHBOARD_RECENT_LIMIT = 5;
+    private final List<Transaction> transactions = new ArrayList<>();
 
-    private final Map<UUID, Transaction> transactionsById = new LinkedHashMap<>();
-    private final NavigableSet<Transaction> transactionsByCreatedAt = new TreeSet<>(
-            Comparator.comparing(Transaction::createdAt)
-                    .reversed()
-                    .thenComparing(Transaction::id));
-    private final Map<String, CategoryTotals> categoryTotals = new HashMap<>();
-
-    private BigDecimal totalIncome = BigDecimal.ZERO;
-    private BigDecimal totalExpenses = BigDecimal.ZERO;
-
-    public synchronized TransactionPage getAll(int page, int size, @Nullable TransactionType type, @Nullable String category) {
-        int safePage = Math.max(page, 0);
-        int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
-        String normalizedCategory = normalizeOptionalCategory(category);
-
-        List<Transaction> filtered = transactionsByCreatedAt.stream()
+    public synchronized List<Transaction> getAll(@Nullable TransactionType type, @Nullable String category) {
+        return transactions.stream()
                 .filter(transaction -> type == null || transaction.type() == type)
-                .filter(transaction -> normalizedCategory == null || transaction.category().equals(normalizedCategory))
+                .filter(transaction -> category == null || transaction.category().equalsIgnoreCase(category.trim()))
                 .toList();
-
-        int fromIndex = Math.min(safePage * safeSize, filtered.size());
-        int toIndex = Math.min(fromIndex + safeSize, filtered.size());
-        int totalPages = filtered.isEmpty() ? 0 : (int) Math.ceil((double) filtered.size() / safeSize);
-
-        return new TransactionPage(
-                filtered.subList(fromIndex, toIndex),
-                safePage,
-                safeSize,
-                filtered.size(),
-                totalPages);
     }
 
     public synchronized Transaction getById(UUID id) {
-        Transaction transaction = transactionsById.get(id);
-        if (transaction == null) {
-            throw new TransactionNotFoundException(id);
-        }
-        return transaction;
+        return transactions.stream()
+                .filter(transaction -> transaction.id().equals(id))
+                .findFirst()
+                .orElseThrow(() -> new TransactionNotFoundException(id));
     }
 
     public synchronized Transaction create(TransactionRequest request) {
@@ -70,14 +40,13 @@ public class TransactionService {
                 request.amount(),
                 request.type(),
                 Instant.now());
-
-        addTransaction(transaction);
+        transactions.add(transaction);
         return transaction;
     }
 
     public synchronized Transaction updateById(UUID id, TransactionRequest request) {
-        Transaction existing = getById(id);
-        removeTransaction(existing);
+        int index = findIndexById(id);
+        Transaction existing = transactions.get(index);
 
         Transaction updated = new Transaction(
                 existing.id(),
@@ -87,109 +56,68 @@ public class TransactionService {
                 request.type(),
                 existing.createdAt());
 
-        addTransaction(updated);
+        transactions.set(index, updated);
         return updated;
     }
 
     public synchronized void deleteById(UUID id) {
-        Transaction existing = getById(id);
-        removeTransaction(existing);
+        boolean removed = transactions.removeIf(transaction -> transaction.id().equals(id));
+        if (!removed) {
+            throw new TransactionNotFoundException(id);
+        }
     }
 
     public synchronized BalanceSummary getBalanceSummary() {
-        return new BalanceSummary(totalIncome, totalExpenses, totalIncome.subtract(totalExpenses));
-    }
+        BigDecimal income = transactions.stream()
+                .filter(transaction -> transaction.type() == TransactionType.INCOME)
+                .map(Transaction::amount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-    public synchronized DashboardSummary getDashboardSummary() {
-        BalanceSummary summary = getBalanceSummary();
-        List<Transaction> recentTransactions = transactionsByCreatedAt.stream()
-                .limit(DASHBOARD_RECENT_LIMIT)
-                .toList();
+        BigDecimal expenses = transactions.stream()
+                .filter(transaction -> transaction.type() == TransactionType.EXPENSE)
+                .map(Transaction::amount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        return new DashboardSummary(
-                transactionsById.size(),
-                summary.income(),
-                summary.expenses(),
-                summary.balance(),
-                recentTransactions);
+        return new BalanceSummary(income, expenses, income.subtract(expenses));
     }
 
     public synchronized List<CategorySummary> getCategorySummaries() {
-        return categoryTotals.entrySet().stream()
-                .map(entry -> new CategorySummary(
-                        entry.getKey(),
-                        entry.getValue().income(),
-                        entry.getValue().expenses(),
-                        entry.getValue().income().subtract(entry.getValue().expenses())))
+        Map<String, List<Transaction>> byCategory = transactions.stream()
+                .collect(LinkedHashMap::new,
+                        (map, transaction) -> map.computeIfAbsent(transaction.category(), ignored -> new ArrayList<>()).add(transaction),
+                        LinkedHashMap::putAll);
+
+        return byCategory.entrySet().stream()
+                .map(entry -> toCategorySummary(entry.getKey(), entry.getValue()))
                 .sorted(Comparator.comparing(CategorySummary::category))
                 .toList();
     }
 
-    private void addTransaction(Transaction transaction) {
-        transactionsById.put(transaction.id(), transaction);
-        transactionsByCreatedAt.add(transaction);
-        applyToTotals(transaction, BigDecimal::add);
+    private CategorySummary toCategorySummary(String category, List<Transaction> items) {
+        BigDecimal income = items.stream()
+                .filter(transaction -> transaction.type() == TransactionType.INCOME)
+                .map(Transaction::amount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal expenses = items.stream()
+                .filter(transaction -> transaction.type() == TransactionType.EXPENSE)
+                .map(Transaction::amount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return new CategorySummary(category, income, expenses, income.subtract(expenses));
     }
 
-    private void removeTransaction(Transaction transaction) {
-        transactionsById.remove(transaction.id());
-        transactionsByCreatedAt.remove(transaction);
-        applyToTotals(transaction, BigDecimal::subtract);
-    }
-
-    private void applyToTotals(Transaction transaction, BigDecimalOperator operator) {
-        if (transaction.type() == TransactionType.INCOME) {
-            totalIncome = operator.apply(totalIncome, transaction.amount());
-        } else {
-            totalExpenses = operator.apply(totalExpenses, transaction.amount());
+    private int findIndexById(UUID id) {
+        for (int i = 0; i < transactions.size(); i++) {
+            if (transactions.get(i).id().equals(id)) {
+                return i;
+            }
         }
-
-        CategoryTotals totals = categoryTotals.computeIfAbsent(transaction.category(), ignored -> new CategoryTotals());
-        totals.apply(transaction.type(), transaction.amount(), operator);
-
-        if (totals.isEmpty()) {
-            categoryTotals.remove(transaction.category());
-        }
+        throw new TransactionNotFoundException(id);
     }
 
     private String normalizeCategory(String category) {
         String normalized = category.trim().toLowerCase(Locale.ROOT);
         return Character.toUpperCase(normalized.charAt(0)) + normalized.substring(1);
-    }
-
-    private String normalizeOptionalCategory(@Nullable String category) {
-        if (category == null || category.isBlank()) {
-            return null;
-        }
-        return normalizeCategory(category);
-    }
-
-    private interface BigDecimalOperator {
-        BigDecimal apply(BigDecimal left, BigDecimal right);
-    }
-
-    private static final class CategoryTotals {
-        private BigDecimal income = BigDecimal.ZERO;
-        private BigDecimal expenses = BigDecimal.ZERO;
-
-        void apply(TransactionType type, BigDecimal amount, BigDecimalOperator operator) {
-            if (type == TransactionType.INCOME) {
-                income = operator.apply(income, amount);
-            } else {
-                expenses = operator.apply(expenses, amount);
-            }
-        }
-
-        BigDecimal income() {
-            return income;
-        }
-
-        BigDecimal expenses() {
-            return expenses;
-        }
-
-        boolean isEmpty() {
-            return income.signum() == 0 && expenses.signum() == 0;
-        }
     }
 }
