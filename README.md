@@ -1,2 +1,171 @@
 # accounting-app
-a/c app
+
+Java Spring Boot accounting app with transaction tracking, filtering, updates, running balance summaries, and a built-in dashboard UI.
+
+## Prerequisites
+
+- Java 17+
+- Maven 3.9+
+
+## Run
+
+```bash
+mvn spring-boot:run
+```
+
+Then open: `http://localhost:8080`
+
+## API
+
+### Create transaction
+
+```http
+POST /api/transactions
+Content-Type: application/json
+
+{
+  "description": "Client payment",
+  "category": "Revenue",
+  "amount": 1200.00,
+  "type": "INCOME"
+}
+```
+
+Supported `type` values:
+- `INCOME`
+- `EXPENSE`
+
+### Update transaction
+
+```http
+PUT /api/transactions/{id}
+Content-Type: application/json
+
+{
+  "description": "Updated payment",
+  "category": "Consulting",
+  "amount": 1400.00,
+  "type": "INCOME"
+}
+```
+
+### List transactions
+
+```http
+GET /api/transactions
+```
+
+The list endpoint is paginated to handle larger datasets efficiently.
+
+Optional query params:
+- `page` (zero-based, default `0`)
+- `size` (default `25`, max `200`)
+- `type` (`INCOME` or `EXPENSE`)
+- `category` (case-insensitive exact match)
+
+Example:
+
+```http
+GET /api/transactions?page=0&size=25&type=EXPENSE&category=operations
+```
+
+Response shape:
+
+```json
+{
+  "items": [],
+  "page": 0,
+  "size": 25,
+  "totalItems": 0,
+  "totalPages": 0
+}
+```
+
+### Get transaction by id
+
+```http
+GET /api/transactions/{id}
+```
+
+### Delete transaction
+
+```http
+DELETE /api/transactions/{id}
+```
+
+
+### Get dashboard payload (used by UI)
+
+The dashboard endpoint returns pre-aggregated totals and only the newest activity so the UI stays fast as transaction volume grows.
+
+```http
+GET /api/transactions/dashboard
+```
+
+Response shape:
+
+```json
+{
+  "transactionCount": 12,
+  "income": 4500.0,
+  "expenses": 1700.0,
+  "balance": 2800.0,
+  "recentTransactions": [
+    {
+      "id": "...",
+      "description": "Hosting",
+      "category": "Operations",
+      "amount": 200.0,
+      "type": "EXPENSE",
+      "createdAt": "2026-01-01T10:00:00Z"
+    }
+  ]
+}
+```
+
+### Get overall summary
+
+```http
+GET /api/transactions/summary
+```
+
+Response shape:
+
+```json
+{
+  "income": 1200.0,
+  "expenses": 400.0,
+  "balance": 800.0
+}
+```
+
+### Get summary by category
+
+```http
+GET /api/transactions/summary/by-category
+```
+
+Response shape:
+
+```json
+[
+  {
+    "category": "Operations",
+    "income": 0.0,
+    "expenses": 200.0,
+    "balance": -200.0
+  },
+  {
+    "category": "Revenue",
+    "income": 1200.0,
+    "expenses": 0.0,
+    "balance": 1200.0
+  }
+]
+```
+
+## Test
+
+```bash
+mvn test
+```
