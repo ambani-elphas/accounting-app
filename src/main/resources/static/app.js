@@ -2,20 +2,29 @@ const currency = (v) => `$${Number(v || 0).toFixed(2)}`;
 
 async function refreshDashboard() {
   const response = await fetch('/api/transactions/dashboard');
-  const data = await response.json();
+  const dashboard = await response.json();
 
-  document.getElementById('count').textContent = data.transactionCount;
-  document.getElementById('income').textContent = currency(data.income);
-  document.getElementById('expenses').textContent = currency(data.expenses);
-  document.getElementById('balance').textContent = currency(data.balance);
+  document.getElementById('count').textContent = dashboard.transactionCount;
+  document.getElementById('income').textContent = currency(dashboard.income);
+  document.getElementById('expenses').textContent = currency(dashboard.expenses);
+  document.getElementById('balance').textContent = currency(dashboard.balance);
 
-  const body = document.getElementById('transactions-body');
-  body.innerHTML = '';
+  const transactionsBody = document.getElementById('transactions-body');
+  transactionsBody.innerHTML = '';
 
-  for (const tx of data.recentTransactions) {
+  for (const tx of dashboard.recentTransactions) {
     const row = document.createElement('tr');
     row.innerHTML = `<td>${tx.description}</td><td>${tx.category}</td><td>${tx.type}</td><td>${currency(tx.amount)}</td>`;
-    body.appendChild(row);
+    transactionsBody.appendChild(row);
+  }
+
+  const categoriesBody = document.getElementById('categories-body');
+  categoriesBody.innerHTML = '';
+
+  for (const category of dashboard.topCategories) {
+    const row = document.createElement('tr');
+    row.innerHTML = `<td>${category.category}</td><td>${currency(category.income)}</td><td>${currency(category.expenses)}</td><td>${currency(category.balance)}</td>`;
+    categoriesBody.appendChild(row);
   }
 }
 
