@@ -8,8 +8,9 @@ import java.math.BigDecimal;
 
 public record TransactionRequest(
         @NotBlank(message = "description is required") String description,
+        @NotBlank(message = "category is required") String category,
         @NotNull(message = "amount is required")
         @DecimalMin(value = "0.01", message = "amount must be positive") BigDecimal amount,
-        @NotBlank(message = "type is required") String type
+        @NotNull(message = "type is required") TransactionType type
 ) {
 }

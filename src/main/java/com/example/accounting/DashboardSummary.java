@@ -8,6 +8,7 @@ public record DashboardSummary(
         BigDecimal income,
         BigDecimal expenses,
         BigDecimal balance,
-        List<Transaction> recentTransactions
+        List<Transaction> recentTransactions,
+        List<CategorySummary> topCategories
 ) {
 }

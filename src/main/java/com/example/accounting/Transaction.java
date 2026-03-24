@@ -7,8 +7,9 @@ import java.util.UUID;
 public record Transaction(
         UUID id,
         String description,
+        String category,
         BigDecimal amount,
-        String type,
+        TransactionType type,
         Instant createdAt
 ) {
 }
