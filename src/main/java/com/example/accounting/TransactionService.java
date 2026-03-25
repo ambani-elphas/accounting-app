@@ -9,7 +9,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -99,18 +98,15 @@ public class TransactionService {
 
     @Transactional(readOnly = true)
     public BalanceSummary getBalanceSummary() {
-        List<Transaction> transactions = transactionRepository.findAll().stream()
-                .map(this::toTransaction)
-                .toList();
-        return summarize(transactions);
+        BalanceAggregateRow totals = transactionRepository.summarizeTotals();
+        BigDecimal income = nullSafe(totals == null ? null : totals.getIncome());
+        BigDecimal expenses = nullSafe(totals == null ? null : totals.getExpenses());
+        return new BalanceSummary(income, expenses, income.subtract(expenses));
     }
 
     @Transactional(readOnly = true)
     public DashboardSummary getDashboardSummary() {
-        List<Transaction> allTransactions = transactionRepository.findAll().stream()
-                .map(this::toTransaction)
-                .toList();
-        BalanceSummary summary = summarize(allTransactions);
+        BalanceSummary summary = getBalanceSummary();
 
         List<Transaction> recentTransactions = transactionRepository.findAll(
                         PageRequest.of(0, DASHBOARD_RECENT_LIMIT, Sort.by(Sort.Direction.DESC, "createdAt")))
@@ -119,9 +115,10 @@ public class TransactionService {
                 .map(this::toTransaction)
                 .toList();
 
-        List<CategorySummary> topCategories = getCategorySummaries().stream()
-                .sorted(Comparator.comparing(CategorySummary::balance).reversed())
-                .limit(DASHBOARD_CATEGORY_LIMIT)
+        List<CategorySummary> topCategories = transactionRepository
+                .summarizeTopCategories(PageRequest.of(0, DASHBOARD_CATEGORY_LIMIT))
+                .stream()
+                .map(this::toCategorySummary)
                 .toList();
 
         return new DashboardSummary(
@@ -135,32 +132,16 @@ public class TransactionService {
 
     @Transactional(readOnly = true)
     public List<CategorySummary> getCategorySummaries() {
-        return transactionRepository.findAll().stream()
-                .map(this::toTransaction)
-                .collect(java.util.stream.Collectors.groupingBy(Transaction::category))
-                .entrySet().stream()
-                .map(entry -> summarizeCategory(entry.getKey(), entry.getValue()))
-                .sorted(Comparator.comparing(CategorySummary::category))
+        return transactionRepository.summarizeByCategory().stream()
+                .map(this::toCategorySummary)
+                .sorted(java.util.Comparator.comparing(CategorySummary::category))
                 .toList();
     }
 
-    private BalanceSummary summarize(List<Transaction> transactions) {
-        BigDecimal income = transactions.stream()
-                .filter(transaction -> transaction.type() == TransactionType.INCOME)
-                .map(Transaction::amount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        BigDecimal expenses = transactions.stream()
-                .filter(transaction -> transaction.type() == TransactionType.EXPENSE)
-                .map(Transaction::amount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        return new BalanceSummary(income, expenses, income.subtract(expenses));
-    }
-
-    private CategorySummary summarizeCategory(String category, List<Transaction> transactions) {
-        BalanceSummary summary = summarize(transactions);
-        return new CategorySummary(category, summary.income(), summary.expenses(), summary.balance());
+    private CategorySummary toCategorySummary(CategoryAggregateRow row) {
+        BigDecimal income = nullSafe(row.getIncome());
+        BigDecimal expenses = nullSafe(row.getExpenses());
+        return new CategorySummary(row.getCategory(), income, expenses, income.subtract(expenses));
     }
 
     private Transaction toTransaction(TransactionEntity entity) {
@@ -190,5 +171,9 @@ public class TransactionService {
             return null;
         }
         return description.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private BigDecimal nullSafe(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
     }
 }
