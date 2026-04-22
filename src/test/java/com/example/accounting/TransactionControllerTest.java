@@ -263,6 +263,23 @@ class TransactionControllerTest {
     }
 
     @Test
+    void shouldReturnLocalizedValidationMessageInSpanish() throws Exception {
+        mockMvc.perform(post("/api/transactions")
+                        .header("Accept-Language", "es")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "description":"",
+                                  "category":"",
+                                  "amount":-5,
+                                  "type":"EXPENSE"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Validación fallida"));
+    }
+
+    @Test
     void shouldReturnBadRequestForInvalidType() throws Exception {
         mockMvc.perform(post("/api/transactions")
                         .contentType(MediaType.APPLICATION_JSON)
