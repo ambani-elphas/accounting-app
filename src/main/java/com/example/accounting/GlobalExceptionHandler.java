@@ -29,8 +29,9 @@ public class GlobalExceptionHandler {
         List<String> errors = ex.getBindingResult().getFieldErrors().stream()
                 .map(this::formatFieldError)
                 .toList();
-        return new ApiErrorResponse(message("error.validation"), errors);
+        return new ApiErrorResponse("Validation failed", errors);
     }
+
 
     @ExceptionHandler(ConstraintViolationException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
@@ -38,7 +39,7 @@ public class GlobalExceptionHandler {
         List<String> errors = ex.getConstraintViolations().stream()
                 .map(violation -> violation.getPropertyPath() + ": " + violation.getMessage())
                 .toList();
-        return new ApiErrorResponse(message("error.validation"), errors);
+        return new ApiErrorResponse("Validation failed", errors);
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
@@ -47,6 +48,7 @@ public class GlobalExceptionHandler {
         return new ApiErrorResponse(
                 message("error.malformed_request"),
                 List.of(message("error.request_body_unreadable")));
+        return new ApiErrorResponse("Malformed request", List.of("Request body could not be parsed"));
     }
 
     @ExceptionHandler(TransactionNotFoundException.class)
@@ -55,6 +57,7 @@ public class GlobalExceptionHandler {
         return new ApiErrorResponse(
                 message("error.not_found"),
                 List.of(message("error.transaction_not_found", ex.getTransactionId())));
+        return new ApiErrorResponse("Not found", List.of(ex.getMessage()));
     }
 
     private String formatFieldError(FieldError fieldError) {

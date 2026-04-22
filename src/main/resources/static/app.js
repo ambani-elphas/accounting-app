@@ -84,6 +84,8 @@ async function apiFetch(path, options = {}) {
 
 async function refreshDashboard() {
   const response = await apiFetch('/api/transactions/dashboard');
+async function refreshDashboard() {
+  const response = await fetch('/api/transactions/dashboard');
   const dashboard = await response.json();
 
   document.getElementById('count').textContent = dashboard.transactionCount;
@@ -124,6 +126,7 @@ async function submitTransaction(event) {
   };
 
   const response = await apiFetch('/api/transactions', {
+  const response = await fetch('/api/transactions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -152,4 +155,5 @@ languageSelect.addEventListener('change', handleLanguageChange);
 
 document.getElementById('transaction-form').addEventListener('submit', submitTransaction);
 applyTranslations();
+document.getElementById('transaction-form').addEventListener('submit', submitTransaction);
 refreshDashboard();
