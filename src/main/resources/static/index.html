@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title data-i18n="ui.title">Accounting Dashboard</title>
+  <title>Accounting Dashboard</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -33,11 +34,27 @@
       <input name="description" data-i18n-placeholder="ui.description" placeholder="Description" required />
       <input name="category" data-i18n-placeholder="ui.category" placeholder="Category" required />
       <input name="amount" type="number" step="0.01" min="0.01" data-i18n-placeholder="ui.amount" placeholder="Amount" required />
+  <h1>Accounting Dashboard</h1>
+
+  <section class="cards" id="cards">
+    <article><h3>Transactions</h3><p id="count">0</p></article>
+    <article><h3>Income</h3><p id="income">$0.00</p></article>
+    <article><h3>Expenses</h3><p id="expenses">$0.00</p></article>
+    <article><h3>Balance</h3><p id="balance">$0.00</p></article>
+  </section>
+
+  <section class="panel">
+    <h2>Add Transaction</h2>
+    <form id="transaction-form">
+      <input name="description" placeholder="Description" required />
+      <input name="category" placeholder="Category" required />
+      <input name="amount" type="number" step="0.01" min="0.01" placeholder="Amount" required />
       <select name="type" required>
         <option value="INCOME">INCOME</option>
         <option value="EXPENSE">EXPENSE</option>
       </select>
       <button type="submit" data-i18n="ui.save">Save</button>
+      <button type="submit">Save</button>
     </form>
     <p id="form-message"></p>
   </section>
@@ -50,6 +67,9 @@
       </h2>
       <table>
         <thead><tr><th data-i18n="ui.description">Description</th><th data-i18n="ui.category">Category</th><th>Type</th><th data-i18n="ui.amount">Amount</th></tr></thead>
+      <h2>Recent Transactions <span class="muted">(latest 5)</span></h2>
+      <table>
+        <thead><tr><th>Description</th><th>Category</th><th>Type</th><th>Amount</th></tr></thead>
         <tbody id="transactions-body"></tbody>
       </table>
     </section>
@@ -58,6 +78,9 @@
       <h2 data-i18n="ui.top_categories">Top Categories</h2>
       <table>
         <thead><tr><th data-i18n="ui.category">Category</th><th data-i18n="ui.income">Income</th><th data-i18n="ui.expenses">Expenses</th><th data-i18n="ui.balance">Balance</th></tr></thead>
+      <h2>Top Categories</h2>
+      <table>
+        <thead><tr><th>Category</th><th>Income</th><th>Expenses</th><th>Balance</th></tr></thead>
         <tbody id="categories-body"></tbody>
       </table>
     </section>

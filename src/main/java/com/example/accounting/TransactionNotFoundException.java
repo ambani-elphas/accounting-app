@@ -13,5 +13,7 @@ public class TransactionNotFoundException extends RuntimeException {
 
     public UUID getTransactionId() {
         return transactionId;
+    public TransactionNotFoundException(UUID id) {
+        super("Transaction not found: " + id);
     }
 }

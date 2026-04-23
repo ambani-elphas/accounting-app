@@ -1,6 +1,7 @@
 # accounting-app
 
 Java Spring Boot accounting app with transaction tracking, filtering, updates, running balance summaries, a built-in dashboard UI, an H2-backed database layer, and localized messages (English/Spanish/French).
+Java Spring Boot accounting app with transaction tracking, filtering, updates, running balance summaries, a built-in dashboard UI, and an H2-backed database layer.
 
 ## Prerequisites
 
@@ -20,6 +21,7 @@ The app now uses Spring Data JPA with separate writer and reader datasource prop
 The API and dashboard support localization through the `Accept-Language` header (for example: `en`, `es`, `fr`).
 
 Caching uses Caffeine with a 5-minute TTL and size bound to keep summary/dashboard reads fast without unbounded memory growth.
+The app now uses Spring Data JPA with separate writer and reader datasource properties. Read-heavy dashboard and summary endpoints are backed by database-side aggregate queries to reduce application memory pressure at higher record counts. By default both point to the same in-memory H2 database for local development, but the `app.datasource.writer.*` and `app.datasource.reader.*` settings can be pointed at a primary database and a read replica in deployed environments. You can inspect the local database at `http://localhost:8080/h2-console` with JDBC URL `jdbc:h2:mem:accountingdb`, username `sa`, and a blank password.
 
 ## API
 
