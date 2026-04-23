@@ -3,11 +3,37 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-i18n="ui.title">Accounting Dashboard</title>
   <title>Accounting Dashboard</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
 <main class="container">
+  <div class="header-row">
+    <h1 data-i18n="ui.title">Accounting Dashboard</h1>
+    <label>
+      <span data-i18n="ui.language">Language</span>
+      <select id="language-select">
+        <option value="en">English</option>
+        <option value="es">Español</option>
+        <option value="fr">Français</option>
+      </select>
+    </label>
+  </div>
+
+  <section class="cards" id="cards">
+    <article><h3 data-i18n="ui.transactions">Transactions</h3><p id="count">0</p></article>
+    <article><h3 data-i18n="ui.income">Income</h3><p id="income">$0.00</p></article>
+    <article><h3 data-i18n="ui.expenses">Expenses</h3><p id="expenses">$0.00</p></article>
+    <article><h3 data-i18n="ui.balance">Balance</h3><p id="balance">$0.00</p></article>
+  </section>
+
+  <section class="panel">
+    <h2 data-i18n="ui.add_transaction">Add Transaction</h2>
+    <form id="transaction-form">
+      <input name="description" data-i18n-placeholder="ui.description" placeholder="Description" required />
+      <input name="category" data-i18n-placeholder="ui.category" placeholder="Category" required />
+      <input name="amount" type="number" step="0.01" min="0.01" data-i18n-placeholder="ui.amount" placeholder="Amount" required />
   <h1>Accounting Dashboard</h1>
 
   <section class="cards" id="cards">
@@ -27,6 +53,7 @@
         <option value="INCOME">INCOME</option>
         <option value="EXPENSE">EXPENSE</option>
       </select>
+      <button type="submit" data-i18n="ui.save">Save</button>
       <button type="submit">Save</button>
     </form>
     <p id="form-message"></p>
@@ -34,6 +61,12 @@
 
   <section class="grid-panels">
     <section class="panel">
+      <h2>
+        <span data-i18n="ui.recent_transactions">Recent Transactions</span>
+        <span class="muted" data-i18n="ui.latest">(latest 5)</span>
+      </h2>
+      <table>
+        <thead><tr><th data-i18n="ui.description">Description</th><th data-i18n="ui.category">Category</th><th>Type</th><th data-i18n="ui.amount">Amount</th></tr></thead>
       <h2>Recent Transactions <span class="muted">(latest 5)</span></h2>
       <table>
         <thead><tr><th>Description</th><th>Category</th><th>Type</th><th>Amount</th></tr></thead>
@@ -42,6 +75,9 @@
     </section>
 
     <section class="panel">
+      <h2 data-i18n="ui.top_categories">Top Categories</h2>
+      <table>
+        <thead><tr><th data-i18n="ui.category">Category</th><th data-i18n="ui.income">Income</th><th data-i18n="ui.expenses">Expenses</th><th data-i18n="ui.balance">Balance</th></tr></thead>
       <h2>Top Categories</h2>
       <table>
         <thead><tr><th>Category</th><th>Income</th><th>Expenses</th><th>Balance</th></tr></thead>

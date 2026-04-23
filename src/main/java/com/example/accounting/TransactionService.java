@@ -1,5 +1,7 @@
 package com.example.accounting;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -61,6 +63,7 @@ public class TransactionService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = {"balanceSummary", "categorySummaries", "dashboardSummary"}, allEntries = true)
     public Transaction create(TransactionRequest request) {
         TransactionEntity transaction = new TransactionEntity(
                 UUID.randomUUID(),
@@ -74,6 +77,7 @@ public class TransactionService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = {"balanceSummary", "categorySummaries", "dashboardSummary"}, allEntries = true)
     public Transaction updateById(UUID id, TransactionRequest request) {
         TransactionEntity existing = transactionRepository.findById(id)
                 .orElseThrow(() -> new TransactionNotFoundException(id));
@@ -90,6 +94,7 @@ public class TransactionService {
     }
 
     @Transactional
+    @CacheEvict(cacheNames = {"balanceSummary", "categorySummaries", "dashboardSummary"}, allEntries = true)
     public void deleteById(UUID id) {
         TransactionEntity existing = transactionRepository.findById(id)
                 .orElseThrow(() -> new TransactionNotFoundException(id));
@@ -97,6 +102,7 @@ public class TransactionService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "balanceSummary")
     public BalanceSummary getBalanceSummary() {
         BalanceAggregateRow totals = transactionRepository.summarizeTotals();
         BigDecimal income = nullSafe(totals == null ? null : totals.getIncome());
@@ -105,6 +111,7 @@ public class TransactionService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "dashboardSummary")
     public DashboardSummary getDashboardSummary() {
         BalanceSummary summary = getBalanceSummary();
 
@@ -131,6 +138,7 @@ public class TransactionService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "categorySummaries")
     public List<CategorySummary> getCategorySummaries() {
         return transactionRepository.summarizeByCategory().stream()
                 .map(this::toCategorySummary)
